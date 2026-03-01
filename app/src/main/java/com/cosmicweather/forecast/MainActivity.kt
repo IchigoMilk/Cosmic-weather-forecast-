@@ -1,262 +1,296 @@
 package com.cosmicweather.forecast
 
 import android.Manifest
-import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.cosmicweather.forecast.api.AirQualityApi
-import com.cosmicweather.forecast.api.AirQualityData
 import com.cosmicweather.forecast.api.SpaceWeatherApi
-import com.cosmicweather.forecast.api.SpaceWeatherData
 import com.cosmicweather.forecast.api.WeatherApi
-import com.cosmicweather.forecast.api.WeatherData
-import com.cosmicweather.forecast.databinding.ActivityMainBinding
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var tvLocation: TextView
+    private lateinit var tvGpsBtn: TextView
+    private lateinit var tvCityBtn: TextView
+    private lateinit var tvSpaceWeather: TextView
+    private lateinit var tvWeather: TextView
+    private lateinit var tvAirQuality: TextView
+    private lateinit var tvStatus: TextView
+    private lateinit var scrollView: ScrollView
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
-
-    private val spaceWeatherApi = SpaceWeatherApi(httpClient)
-    private val weatherApi = WeatherApi(httpClient)
-    private val airQualityApi = AirQualityApi(httpClient)
-
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-
-    private var currentLat = 34.6913  // Kobe, Japan
-    private var currentLon = 135.1830
-    private var currentLocationName = "Kobe, Japan"
-
-    private val refreshHandler = Handler(Looper.getMainLooper())
-    private val refreshInterval = 60_000L // 60 seconds
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var currentLocation = Cities.default
+    private var isRefreshing = false
 
     private val refreshRunnable = object : Runnable {
         override fun run() {
-            fetchAllData()
-            refreshHandler.postDelayed(this, refreshInterval)
+            refreshAllData()
+            mainHandler.postDelayed(this, 60_000L)
         }
-    }
-
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST = 1001
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
 
-        setupHeader()
-        setupLocationBar()
-        setupButtons()
+        tvLocation    = findViewById(R.id.tvLocation)
+        tvGpsBtn      = findViewById(R.id.tvGpsBtn)
+        tvCityBtn     = findViewById(R.id.tvCityBtn)
+        tvSpaceWeather = findViewById(R.id.tvSpaceWeather)
+        tvWeather     = findViewById(R.id.tvWeather)
+        tvAirQuality  = findViewById(R.id.tvAirQuality)
+        tvStatus      = findViewById(R.id.tvStatus)
+        scrollView    = findViewById(R.id.scrollView)
 
-        // Start auto-refresh loop
-        refreshHandler.post(refreshRunnable)
+        updateLocationLabel()
+
+        tvGpsBtn.setOnClickListener { requestGpsLocation() }
+        tvCityBtn.setOnClickListener { showCityPicker() }
+
+        mainHandler.post(refreshRunnable)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        refreshHandler.removeCallbacks(refreshRunnable)
-        scope.cancel()
-        httpClient.dispatcher.executorService.shutdown()
+        mainHandler.removeCallbacks(refreshRunnable)
     }
 
-    private fun setupHeader() {
-        binding.tvHeader.text =
-            "╔══════════════════════════════════════╗\n" +
-            "║   COSMIC WEATHER TERMINAL  v1.0      ║\n" +
-            "╚══════════════════════════════════════╝"
+    private fun updateLocationLabel() {
+        tvLocation.text = "LOC: ${currentLocation.name}"
     }
 
-    private fun setupLocationBar() {
-        binding.tvLocation.text = "LOC: $currentLocationName"
-    }
+    private fun refreshAllData() {
+        if (isRefreshing) return
+        isRefreshing = true
+        val now = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+        tvStatus.text = "SYS: FETCHING DATA... [$now]"
 
-    private fun setupButtons() {
-        binding.tvGpsBtn.setOnClickListener { requestGpsLocation() }
-        binding.tvCityBtn.setOnClickListener {
-            LocationPickerDialog(this) { city ->
-                currentLat = city.lat
-                currentLon = city.lon
-                currentLocationName = city.name
-                binding.tvLocation.text = "LOC: $currentLocationName"
-                fetchAllData()
-            }.show()
-        }
-    }
+        Thread {
+            var swText: String
+            var wText: String
+            var aqText: String
 
-    private fun fetchAllData() {
-        val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        binding.tvStatus.text = "SYS: FETCHING DATA... [$timestamp]"
-
-        scope.launch {
-            // Fetch all three data sources concurrently
-            var spaceResult: Result<SpaceWeatherData>? = null
-            var weatherResult: Result<WeatherData>? = null
-            var aqResult: Result<AirQualityData>? = null
-
-            val job1 = launch {
-                spaceResult = runCatching { spaceWeatherApi.fetchSpaceWeather() }
-            }
-            val job2 = launch {
-                weatherResult = runCatching { weatherApi.fetchWeather(currentLat, currentLon) }
-            }
-            val job3 = launch {
-                aqResult = runCatching { airQualityApi.fetchAirQuality(currentLat, currentLon) }
+            // Space Weather
+            swText = try {
+                val d = SpaceWeatherApi.fetch()
+                buildSpaceWeatherText(d)
+            } catch (e: Exception) {
+                buildErrorBox("COSMIC RAY / SPACE WEATHER", e.message ?: "Network error")
             }
 
-            job1.join(); job2.join(); job3.join()
-
-            withContext(Dispatchers.Main) {
-                spaceResult?.fold(
-                    onSuccess = { binding.tvSpaceWeather.text = formatSpaceWeather(it) },
-                    onFailure = { binding.tvSpaceWeather.text = formatError("SPACE WEATHER", it.message) }
-                )
-                weatherResult?.fold(
-                    onSuccess = { binding.tvWeather.text = formatWeather(it) },
-                    onFailure = { binding.tvWeather.text = formatError("WEATHER FORECAST", it.message) }
-                )
-                aqResult?.fold(
-                    onSuccess = { binding.tvAirQuality.text = formatAirQuality(it) },
-                    onFailure = { binding.tvAirQuality.text = formatError("AIR QUALITY", it.message) }
-                )
-
-                val done = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                binding.tvStatus.text = "SYS: LAST UPDATE $done | NEXT IN 60s"
+            // Weather
+            wText = try {
+                val d = WeatherApi.fetch(currentLocation.lat, currentLocation.lon)
+                buildWeatherText(d)
+            } catch (e: Exception) {
+                buildErrorBox("WEATHER FORECAST", e.message ?: "Network error")
             }
-        }
+
+            // Air Quality
+            aqText = try {
+                val d = AirQualityApi.fetch(currentLocation.lat, currentLocation.lon)
+                buildAirQualityText(d)
+            } catch (e: Exception) {
+                buildErrorBox("AIR QUALITY", e.message ?: "Network error")
+            }
+
+            val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+            mainHandler.post {
+                tvSpaceWeather.text = swText
+                tvWeather.text = wText
+                tvAirQuality.text = aqText
+                tvStatus.text = "SYS: LAST UPDATE $ts UTC+9"
+                isRefreshing = false
+            }
+        }.start()
     }
 
-    // ── Formatting helpers ──────────────────────────────────────────────────
+    // ──────────────────────────────────────────────
+    // Terminal text builders
+    // ──────────────────────────────────────────────
 
-    private val W = 40  // box inner width
-
-    private fun boxLine(content: String): String {
-        val padded = content.padEnd(W - 2)
-        return "║  ${padded.take(W - 2)}  ║"
-    }
-
-    private fun formatSpaceWeather(d: SpaceWeatherData): String {
-        val kpBar = buildKpBar(d.kpIndex)
+    private fun buildSpaceWeatherText(d: com.cosmicweather.forecast.api.SpaceWeatherData): String {
+        val w = 44
+        val kpLevel = kpBar(d.kpIndex)
+        val kpStatus = kpStatus(d.kpIndex)
         val tempStr = "%.2e".format(d.solarWindTemp)
-        return buildString {
-            appendLine("╔${"═".repeat(W)}╗")
-            appendLine("║  ${"COSMIC RAY / SPACE WEATHER".padEnd(W - 2)}  ║")
-            appendLine("╠${"═".repeat(W)}╣")
-            appendLine(boxLine("KP INDEX   : ${"%.1f".format(d.kpIndex)}  [${d.kpLevel}]"))
-            appendLine(boxLine("KP LEVEL   : $kpBar"))
-            appendLine(boxLine("SOLAR WIND : ${"%.0f".format(d.solarWindSpeed)} km/s"))
-            appendLine(boxLine("SW DENSITY : ${"%.2f".format(d.solarWindDensity)} p/cm\u00B3"))
-            appendLine(boxLine("SW TEMP    : $tempStr K"))
-            appendLine(boxLine("KP TIME    : ${d.kpTimestamp}"))
-            append("╚${"═".repeat(W)}╝")
-        }
+        return buildBox(
+            "COSMIC RAY / SPACE WEATHER", w,
+            listOf(
+                "KP INDEX   : ${"%.1f".format(d.kpIndex)}  [$kpStatus]",
+                "KP LEVEL   : $kpLevel",
+                "SOLAR WIND : ${"%.0f".format(d.solarWindSpeed)} km/s",
+                "SW DENSITY : ${"%.1f".format(d.solarWindDensity)} p/cm\u00B3",
+                "SW TEMP    : $tempStr K",
+                "TIMESTAMP  : ${d.timestamp} UTC"
+            )
+        )
     }
 
-    private fun buildKpBar(kp: Double): String {
+    private fun buildWeatherText(d: com.cosmicweather.forecast.api.WeatherData): String {
+        val w = 44
+        val desc = WeatherApi.weatherDescription(d.weatherCode)
+        return buildBox(
+            "WEATHER FORECAST", w,
+            listOf(
+                "LOCATION   : ${currentLocation.name}",
+                "TEMPERATURE: ${"%.1f".format(d.temperature)} \u00B0C",
+                "HUMIDITY   : ${d.humidity}%",
+                "WIND SPEED : ${"%.1f".format(d.windSpeed)} m/s",
+                "PRECIP     : ${"%.1f".format(d.precipitation)} mm",
+                "CONDITION  : $desc",
+                "TIME       : ${d.timestamp}"
+            )
+        )
+    }
+
+    private fun buildAirQualityText(d: com.cosmicweather.forecast.api.AirQualityData): String {
+        val w = 44
+        val cat = AirQualityApi.aqiCategory(d.usAqi)
+        return buildBox(
+            "AIR QUALITY", w,
+            listOf(
+                "AQI (US)   : ${d.usAqi} [$cat]",
+                "PM2.5      : ${"%.1f".format(d.pm25)} \u03BCg/m\u00B3",
+                "PM10       : ${"%.1f".format(d.pm10)} \u03BCg/m\u00B3",
+                "TIME       : ${d.timestamp}"
+            )
+        )
+    }
+
+    private fun buildErrorBox(title: String, msg: String): String {
+        return buildBox(title, 44, listOf("ERROR: $msg"))
+    }
+
+    private fun buildBox(title: String, width: Int, lines: List<String>): String {
+        val sb = StringBuilder()
+        val innerWidth = width - 2  // inside the border chars
+        val topBar = "\u2554" + "\u2550".repeat(innerWidth) + "\u2557"
+        val divider = "\u2560" + "\u2550".repeat(innerWidth) + "\u2563"
+        val botBar = "\u255A" + "\u2550".repeat(innerWidth) + "\u255D"
+
+        sb.appendLine(topBar)
+        val titlePadded = "  $title"
+        sb.appendLine("\u2551${titlePadded.padEnd(innerWidth)}\u2551")
+        sb.appendLine(divider)
+        for (line in lines) {
+            val content = "  $line"
+            val padded = if (content.length > innerWidth) content.take(innerWidth) else content.padEnd(innerWidth)
+            sb.appendLine("\u2551$padded\u2551")
+        }
+        sb.append(botBar)
+        return sb.toString()
+    }
+
+    private fun kpBar(kp: Double): String {
         val filled = (kp / 9.0 * 10).toInt().coerceIn(0, 10)
-        return "[" + "█".repeat(filled) + "░".repeat(10 - filled) + "]"
+        return "[" + "\u2588".repeat(filled) + "\u2591".repeat(10 - filled) + "]"
     }
 
-    private fun formatWeather(d: WeatherData): String {
-        return buildString {
-            appendLine()
-            appendLine("╔${"═".repeat(W)}╗")
-            appendLine("║  ${"WEATHER FORECAST".padEnd(W - 2)}  ║")
-            appendLine("╠${"═".repeat(W)}╣")
-            appendLine(boxLine("LOCATION  : $currentLocationName"))
-            appendLine(boxLine("TEMP      : ${"%.1f".format(d.temperature)} \u00B0C"))
-            appendLine(boxLine("HUMIDITY  : ${d.humidity}%"))
-            appendLine(boxLine("WIND      : ${"%.1f".format(d.windSpeed)} m/s"))
-            appendLine(boxLine("PRECIP    : ${"%.1f".format(d.precipitation)} mm"))
-            appendLine(boxLine("CONDITION : ${d.condition}"))
-            appendLine(boxLine("WX CODE   : ${d.weatherCode}"))
-            appendLine(boxLine("TIME      : ${d.timestamp}"))
-            append("╚${"═".repeat(W)}╝")
-        }
+    private fun kpStatus(kp: Double) = when {
+        kp < 1.0 -> "QUIET"
+        kp < 3.0 -> "UNSETTLED"
+        kp < 5.0 -> "ACTIVE"
+        kp < 6.0 -> "MINOR STORM"
+        kp < 7.0 -> "MODERATE STORM"
+        kp < 8.0 -> "STRONG STORM"
+        kp < 9.0 -> "SEVERE STORM"
+        else -> "EXTREME STORM"
     }
 
-    private fun formatAirQuality(d: AirQualityData): String {
-        val aqiColor = when {
-            d.aqi <= 50  -> "▓"
-            d.aqi <= 100 -> "▒"
-            else         -> "░"
-        }
-        return buildString {
-            appendLine()
-            appendLine("╔${"═".repeat(W)}╗")
-            appendLine("║  ${"AIR QUALITY".padEnd(W - 2)}  ║")
-            appendLine("╠${"═".repeat(W)}╣")
-            appendLine(boxLine("AQI (US)  : ${d.aqi}  [${d.aqiLevel}]  $aqiColor"))
-            appendLine(boxLine("PM2.5     : ${"%.1f".format(d.pm25)} \u03BCg/m\u00B3"))
-            appendLine(boxLine("PM10      : ${"%.1f".format(d.pm10)} \u03BCg/m\u00B3"))
-            appendLine(boxLine("UPDATED   : ${d.timestamp}"))
-            append("╚${"═".repeat(W)}╝")
-        }
-    }
+    // ──────────────────────────────────────────────
+    // Location
+    // ──────────────────────────────────────────────
 
-    private fun formatError(section: String, message: String?): String {
-        val title = section.padEnd(W - 2)
-        val err = ("ERR: ${message ?: "Unknown error"}").take(W - 2).padEnd(W - 2)
-        return buildString {
-            appendLine()
-            appendLine("╔${"═".repeat(W)}╗")
-            appendLine("║  $title  ║")
-            appendLine("╠${"═".repeat(W)}╣")
-            appendLine("║  $err  ║")
-            append("╚${"═".repeat(W)}╝")
-        }
+    private fun showCityPicker() {
+        val names = Cities.list.map { it.name }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Select City")
+            .setItems(names) { _, idx ->
+                currentLocation = Cities.list[idx]
+                updateLocationLabel()
+                refreshAllData()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
-
-    // ── GPS Location ────────────────────────────────────────────────────────
 
     private fun requestGpsLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ),
-                LOCATION_PERMISSION_REQUEST
+            requestPermissions(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                REQ_LOCATION
             )
-        } else {
-            getGpsLocation()
+            return
         }
+        getGpsLocation()
+    }
+
+    @Suppress("MissingPermission")
+    private fun getGpsLocation() {
+        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
+        tvStatus.text = "SYS: ACQUIRING GPS FIX..."
+
+        val lastKnown = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+
+        if (lastKnown != null) {
+            applyLocation(lastKnown)
+            return
+        }
+
+        val listener = object : LocationListener {
+            override fun onLocationChanged(loc: Location) {
+                lm.removeUpdates(this)
+                applyLocation(loc)
+            }
+            @Suppress("OVERRIDE_DEPRECATION")
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        }
+
+        try {
+            lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, listener, Looper.getMainLooper())
+        } catch (e: Exception) {
+            try {
+                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper())
+            } catch (e2: Exception) {
+                Toast.makeText(this, "GPS unavailable", Toast.LENGTH_SHORT).show()
+                tvStatus.text = "SYS: GPS ERROR"
+            }
+        }
+    }
+
+    private fun applyLocation(loc: Location) {
+        currentLocation = CityLocation(
+            "GPS (%.4f, %.4f)".format(loc.latitude, loc.longitude),
+            loc.latitude,
+            loc.longitude
+        )
+        updateLocationLabel()
+        refreshAllData()
     }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<out String>,
+        permissions: Array<String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST &&
+        if (requestCode == REQ_LOCATION &&
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
@@ -266,24 +300,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun getGpsLocation() {
-        binding.tvStatus.text = "SYS: ACQUIRING GPS SIGNAL..."
-        val fusedClient = LocationServices.getFusedLocationProviderClient(this)
-        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { location ->
-                if (location != null) {
-                    currentLat = location.latitude
-                    currentLon = location.longitude
-                    currentLocationName = "GPS (${"%.4f".format(currentLat)}, ${"%.4f".format(currentLon)})"
-                    binding.tvLocation.text = "LOC: $currentLocationName"
-                    fetchAllData()
-                } else {
-                    binding.tvStatus.text = "SYS: GPS SIGNAL NOT AVAILABLE"
-                }
-            }
-            .addOnFailureListener { e ->
-                binding.tvStatus.text = "SYS: GPS ERROR - ${e.message}"
-            }
+    companion object {
+        private const val REQ_LOCATION = 1001
     }
 }

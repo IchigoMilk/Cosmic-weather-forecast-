@@ -5,8 +5,3 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Keep OkHttp and related classes
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
--keep class okio.** { *; }
