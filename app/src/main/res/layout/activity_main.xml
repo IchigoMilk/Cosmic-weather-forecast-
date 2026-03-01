@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/terminal_bg"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- Header -->
+    <TextView
+        android:id="@+id/tvHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textColor="@color/terminal_green"
+        android:textSize="12sp"
+        android:text="COSMIC WEATHER TERMINAL v1.0" />
+
+    <!-- Location bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvLocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="monospace"
+            android:textColor="@color/terminal_cyan"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/tvGpsBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="@color/terminal_yellow"
+            android:textSize="11sp"
+            android:padding="8dp"
+            android:text="[GPS]" />
+
+        <TextView
+            android:id="@+id/tvCityBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="@color/terminal_yellow"
+            android:textSize="11sp"
+            android:padding="8dp"
+            android:text="[CITY]" />
+
+    </LinearLayout>
+
+    <!-- Scrollable terminal output -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Space Weather Section -->
+            <TextView
+                android:id="@+id/tvSpaceWeather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/terminal_green"
+                android:textSize="11sp"
+                android:text="Loading space weather..." />
+
+            <!-- Weather Section -->
+            <TextView
+                android:id="@+id/tvWeather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/terminal_green"
+                android:textSize="11sp"
+                android:text="Loading weather..." />
+
+            <!-- Air Quality Section -->
+            <TextView
+                android:id="@+id/tvAirQuality"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/terminal_green"
+                android:textSize="11sp"
+                android:text="Loading air quality..." />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Status bar -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textColor="@color/terminal_green_dim"
+        android:textSize="10sp"
+        android:text="SYS: INITIALIZING..." />
+
+</LinearLayout>

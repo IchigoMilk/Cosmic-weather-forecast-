@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="terminal_bg">#000000</color>
+    <color name="terminal_green">#00FF41</color>
+    <color name="terminal_green_dim">#007A1F</color>
+    <color name="terminal_yellow">#FFFF00</color>
+    <color name="terminal_red">#FF0000</color>
+    <color name="terminal_cyan">#00FFFF</color>
+    <color name="terminal_white">#CCCCCC</color>
+</resources>
