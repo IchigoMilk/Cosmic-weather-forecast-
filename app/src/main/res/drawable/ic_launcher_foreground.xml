@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Primary particle tracks (8 directions from center 54,54) -->
+    <!-- Up -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L54,10"/>
+    <!-- Down -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L54,98"/>
+    <!-- Left -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L10,54"/>
+    <!-- Right -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L98,54"/>
+    <!-- UpperRight 45° -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.4"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L92,16"/>
+    <!-- LowerLeft 225° -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.4"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L16,92"/>
+    <!-- UpperLeft 135° -->
+    <path
+        android:strokeColor="#4090FF"
+        android:strokeWidth="1.4"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L16,16"/>
+    <!-- LowerRight 315° -->
+    <path
+        android:strokeColor="#4090FF"
+        android:strokeWidth="1.4"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L92,92"/>
+
+    <!-- Particle cascade forks (decay at track ends) -->
+    <!-- Fork at top of Up-track -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.0"
+        android:fillColor="#00000000"
+        android:pathData="M54,10 L46,2 M54,10 L62,2"/>
+    <!-- Fork at end of LowerRight track -->
+    <path
+        android:strokeColor="#4090FF"
+        android:strokeWidth="1.0"
+        android:fillColor="#00000000"
+        android:pathData="M92,92 L84,102 M92,92 L102,84"/>
+    <!-- Fork at UpperRight track -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="0.9"
+        android:fillColor="#00000000"
+        android:pathData="M92,16 L86,8 M92,16 L100,22"/>
+
+    <!-- Secondary oblique tracks (cosmic ray shower) -->
+    <path
+        android:strokeColor="#4090FF"
+        android:strokeWidth="1.0"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L80,18"/>
+    <path
+        android:strokeColor="#4090FF"
+        android:strokeWidth="1.0"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L28,90"/>
+    <path
+        android:strokeColor="#0060CC"
+        android:strokeWidth="0.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L18,30"/>
+    <path
+        android:strokeColor="#0060CC"
+        android:strokeWidth="0.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,54 L90,78"/>
+
+    <!-- Orbital ring (electron orbit / magnetic deflection arc) -->
+    <path
+        android:strokeColor="#80FFFFFF"
+        android:strokeWidth="0.9"
+        android:fillColor="#00000000"
+        android:pathData="M54,28 A26,26 0 0,1 80,54 A26,26 0 0,1 54,80 A26,26 0 0,1 28,54 A26,26 0 0,1 54,28 Z"/>
+
+    <!-- Bright particles / stars near impact point -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,14 A2,2 0 0,1 24,16 A2,2 0 0,1 22,18 A2,2 0 0,1 20,16 A2,2 0 0,1 22,14 Z"/>
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M88,24 A1.5,1.5 0 0,1 89.5,25.5 A1.5,1.5 0 0,1 88,27 A1.5,1.5 0 0,1 86.5,25.5 A1.5,1.5 0 0,1 88,24 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14,80 A1.5,1.5 0 0,1 15.5,81.5 A1.5,1.5 0 0,1 14,83 A1.5,1.5 0 0,1 12.5,81.5 A1.5,1.5 0 0,1 14,80 Z"/>
+    <path
+        android:fillColor="#4090FF"
+        android:pathData="M90,78 A2,2 0 0,1 92,80 A2,2 0 0,1 90,82 A2,2 0 0,1 88,80 A2,2 0 0,1 90,78 Z"/>
+    <path
+        android:fillColor="#80FFFFFF"
+        android:pathData="M44,8 A1,1 0 0,1 45,9 A1,1 0 0,1 44,10 A1,1 0 0,1 43,9 A1,1 0 0,1 44,8 Z"/>
+    <path
+        android:fillColor="#8000E5FF"
+        android:pathData="M62,97 A1,1 0 0,1 63,98 A1,1 0 0,1 62,99 A1,1 0 0,1 61,98 A1,1 0 0,1 62,97 Z"/>
+
+    <!-- Central nucleus: outer white halo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,49 A5,5 0 0,1 59,54 A5,5 0 0,1 54,59 A5,5 0 0,1 49,54 A5,5 0 0,1 54,49 Z"/>
+    <!-- Central nucleus: cyan ring -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,51 A3,3 0 0,1 57,54 A3,3 0 0,1 54,57 A3,3 0 0,1 51,54 A3,3 0 0,1 54,51 Z"/>
+    <!-- Central nucleus: bright white core -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,52.5 A1.5,1.5 0 0,1 55.5,54 A1.5,1.5 0 0,1 54,55.5 A1.5,1.5 0 0,1 52.5,54 A1.5,1.5 0 0,1 54,52.5 Z"/>
+</vector>

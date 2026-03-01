@@ -177,22 +177,11 @@ class MainActivity : Activity() {
 
     private fun buildBox(title: String, width: Int, lines: List<String>): String {
         val sb = StringBuilder()
-        val innerWidth = width - 2  // inside the border chars
-        val topBar = "\u2554" + "\u2550".repeat(innerWidth) + "\u2557"
-        val divider = "\u2560" + "\u2550".repeat(innerWidth) + "\u2563"
-        val botBar = "\u255A" + "\u2550".repeat(innerWidth) + "\u255D"
-
-        sb.appendLine(topBar)
-        val titlePadded = "  $title"
-        sb.appendLine("\u2551${titlePadded.padEnd(innerWidth)}\u2551")
-        sb.appendLine(divider)
+        sb.appendLine("\u2605 $title")
         for (line in lines) {
-            val content = "  $line"
-            val padded = if (content.length > innerWidth) content.take(innerWidth) else content.padEnd(innerWidth)
-            sb.appendLine("\u2551$padded\u2551")
+            sb.appendLine("  $line")
         }
-        sb.append(botBar)
-        return sb.toString()
+        return sb.toString().trimEnd()
     }
 
     private fun kpBar(kp: Double): String {
