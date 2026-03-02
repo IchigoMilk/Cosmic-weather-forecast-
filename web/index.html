@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Weather Forecast</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #000;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    #app {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── header ── */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    #loc-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn {
+      background: transparent;
+      color: #00ff41;
+      border: 1px solid #00ff41;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 2px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #00ff4122; }
+    .btn:active { background: #00ff4144; }
+
+    /* ── divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #00ff41;
+      margin: 6px 0;
+    }
+
+    /* ── panels ── */
+    .panel {
+      margin-bottom: 12px;
+      white-space: pre;
+    }
+
+    /* ── status bar ── */
+    #status { margin-top: 4px; }
+
+    /* ── city modal ── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 10;
+      justify-content: center;
+      align-items: center;
+    }
+    #modal-overlay.open { display: flex; }
+
+    #modal {
+      background: #000;
+      border: 1px solid #00ff41;
+      padding: 16px;
+      min-width: 260px;
+    }
+
+    #modal h2 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #00ff41;
+      padding-bottom: 6px;
+    }
+
+    #city-list { list-style: none; }
+    #city-list li {
+      padding: 5px 4px;
+      cursor: pointer;
+    }
+    #city-list li:hover { background: #00ff4122; }
+
+    #modal-cancel {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    /* spinner animation */
+    @keyframes blink { 50% { opacity: 0; } }
+    .blink { animation: blink 1s step-start infinite; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <span id="loc-label">LOC: Kobe, Japan</span>
+    <button class="btn" id="btn-gps">[GPS]</button>
+    <button class="btn" id="btn-city">[CITY]</button>
+  </div>
+  <hr class="divider">
+  <div class="panel" id="panel-space">Loading...</div>
+  <div class="panel" id="panel-weather">Loading...</div>
+  <div class="panel" id="panel-air">Loading...</div>
+  <hr class="divider">
+  <div id="status">SYS: INITIALIZING...</div>
+</div>
+
+<!-- City picker modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>SELECT CITY</h2>
+    <ul id="city-list"></ul>
+    <button class="btn" id="modal-cancel">[ CANCEL ]</button>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+const CITIES = [
+  { name: "Kobe, Japan",      lat: 34.6913, lon: 135.1830 },
+  { name: "Tokyo, Japan",     lat: 35.6762, lon: 139.6503 },
+  { name: "Osaka, Japan",     lat: 34.6937, lon: 135.5023 },
+  { name: "Kyoto, Japan",     lat: 35.0116, lon: 135.7681 },
+  { name: "Nagoya, Japan",    lat: 35.1815, lon: 136.9066 },
+  { name: "Sapporo, Japan",   lat: 43.0642, lon: 141.3469 },
+  { name: "Fukuoka, Japan",   lat: 33.5904, lon: 130.4017 },
+  { name: "Yokohama, Japan",  lat: 35.4437, lon: 139.6380 },
+  { name: "Sendai, Japan",    lat: 38.2682, lon: 140.8694 },
+  { name: "Hiroshima, Japan", lat: 34.3853, lon: 132.4553 },
+];
+
+let currentLocation = { ...CITIES[0] };
+let refreshTimer = null;
+let isRefreshing = false;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const locLabel     = document.getElementById('loc-label');
+const panelSpace   = document.getElementById('panel-space');
+const panelWeather = document.getElementById('panel-weather');
+const panelAir     = document.getElementById('panel-air');
+const statusBar    = document.getElementById('status');
+const modalOverlay = document.getElementById('modal-overlay');
+const cityList     = document.getElementById('city-list');
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function kpBar(kp) {
+  const filled = Math.min(10, Math.max(0, Math.round(kp / 9.0 * 10)));
+  return '[' + '\u2588'.repeat(filled) + '\u2591'.repeat(10 - filled) + ']';
+}
+
+function kpStatus(kp) {
+  if (kp < 1) return 'QUIET';
+  if (kp < 3) return 'UNSETTLED';
+  if (kp < 5) return 'ACTIVE';
+  if (kp < 6) return 'MINOR STORM';
+  if (kp < 7) return 'MODERATE STORM';
+  if (kp < 8) return 'STRONG STORM';
+  if (kp < 9) return 'SEVERE STORM';
+  return 'EXTREME STORM';
+}
+
+function weatherDesc(code) {
+  const map = {
+    0: 'Clear Sky', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Fog',
+    51: 'Drizzle', 53: 'Drizzle', 55: 'Drizzle',
+    61: 'Rain', 63: 'Rain', 65: 'Rain',
+    71: 'Snow', 73: 'Snow', 75: 'Snow',
+    80: 'Showers', 81: 'Showers', 82: 'Showers',
+    95: 'Thunderstorm', 96: 'Thunderstorm w/ Hail', 99: 'Thunderstorm w/ Hail',
+  };
+  return map[code] || 'Code ' + code;
+}
+
+function aqiCategory(aqi) {
+  if (aqi <= 50)  return 'GOOD';
+  if (aqi <= 100) return 'MODERATE';
+  if (aqi <= 150) return 'UNHEALTHY FOR SENSITIVE';
+  if (aqi <= 200) return 'UNHEALTHY';
+  if (aqi <= 300) return 'VERY UNHEALTHY';
+  return 'HAZARDOUS';
+}
+
+function fmtExp(val) {
+  return val.toExponential(2);
+}
+
+function nowJst() {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' })
+    .replace('T', ' ') + ' UTC+9';
+}
+
+function buildBox(title, rows) {
+  const INNER = 44; // characters between ╔ and ╗ (excluding them)
+  function pad(s) {
+    const spaces = Math.max(0, INNER - 2 - s.length);
+    return '\u2551  ' + s + ' '.repeat(spaces) + '\u2551';
+  }
+  const top    = '\u2554' + '\u2550'.repeat(INNER) + '\u2557';
+  const sep    = '\u2560' + '\u2550'.repeat(INNER) + '\u2563';
+  const bottom = '\u255a' + '\u2550'.repeat(INNER) + '\u255d';
+  return [top, pad(title), sep, ...rows.map(pad), bottom].join('\n');
+}
+
+function buildErrorBox(title, msg) {
+  return buildBox(title, ['ERROR: ' + msg]);
+}
+
+// ── API fetchers ──────────────────────────────────────────────────────────
+async function fetchSpaceWeather() {
+  const [kpResp, windResp] = await Promise.all([
+    fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'),
+    fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json'),
+  ]);
+  const kpArr   = await kpResp.json();
+  const windArr = await windResp.json();
+
+  const lastKp   = kpArr[kpArr.length - 1];
+  const lastWind = windArr[windArr.length - 1];
+
+  return {
+    kpIndex:     parseFloat(lastKp[1])   || 0,
+    timestamp:   lastKp[0],
+    windDensity: parseFloat(lastWind[1]) || 0,
+    windSpeed:   parseFloat(lastWind[2]) || 0,
+    windTemp:    parseFloat(lastWind[3]) || 0,
+  };
+}
+
+async function fetchWeather(lat, lon) {
+  const url = 'https://api.open-meteo.com/v1/forecast'
+    + '?latitude=' + lat + '&longitude=' + lon
+    + '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation'
+    + '&wind_speed_unit=ms';
+  const data = await (await fetch(url)).json();
+  const c = data.current;
+  return {
+    temperature:   c.temperature_2m,
+    humidity:      c.relative_humidity_2m,
+    windSpeed:     c.wind_speed_10m,
+    weatherCode:   c.weather_code,
+    precipitation: c.precipitation,
+    timestamp:     c.time,
+  };
+}
+
+async function fetchAirQuality(lat, lon) {
+  const url = 'https://air-quality-api.open-meteo.com/v1/air-quality'
+    + '?latitude=' + lat + '&longitude=' + lon
+    + '&current=pm10,pm2_5,us_aqi';
+  const data = await (await fetch(url)).json();
+  const c = data.current;
+  return {
+    usAqi:     c.us_aqi,
+    pm25:      c.pm2_5,
+    pm10:      c.pm10,
+    timestamp: c.time,
+  };
+}
+
+// ── Renderers ─────────────────────────────────────────────────────────────
+function renderSpaceWeather(d) {
+  return buildBox('COSMIC RAY / SPACE WEATHER', [
+    'KP INDEX   : ' + d.kpIndex.toFixed(1) + '  [' + kpStatus(d.kpIndex) + ']',
+    'KP LEVEL   : ' + kpBar(d.kpIndex),
+    'SOLAR WIND : ' + d.windSpeed.toFixed(0) + ' km/s',
+    'SW DENSITY : ' + d.windDensity.toFixed(1) + ' p/cm\u00b3',
+    'SW TEMP    : ' + fmtExp(d.windTemp) + ' K',
+    'TIMESTAMP  : ' + d.timestamp + ' UTC',
+  ]);
+}
+
+function renderWeather(d) {
+  return buildBox('WEATHER FORECAST', [
+    'LOCATION   : ' + currentLocation.name,
+    'TEMPERATURE: ' + d.temperature.toFixed(1) + ' \u00b0C',
+    'HUMIDITY   : ' + d.humidity + '%',
+    'WIND SPEED : ' + d.windSpeed.toFixed(1) + ' m/s',
+    'PRECIP     : ' + d.precipitation.toFixed(1) + ' mm',
+    'CONDITION  : ' + weatherDesc(d.weatherCode),
+    'TIME       : ' + d.timestamp,
+  ]);
+}
+
+function renderAirQuality(d) {
+  return buildBox('AIR QUALITY', [
+    'AQI (US)   : ' + d.usAqi + ' [' + aqiCategory(d.usAqi) + ']',
+    'PM2.5      : ' + d.pm25.toFixed(1) + ' \u03bcg/m\u00b3',
+    'PM10       : ' + d.pm10.toFixed(1) + ' \u03bcg/m\u00b3',
+    'TIME       : ' + d.timestamp,
+  ]);
+}
+
+// ── Main refresh ──────────────────────────────────────────────────────────
+async function refreshAll() {
+  if (isRefreshing) return;
+  isRefreshing = true;
+  statusBar.innerHTML = 'SYS: FETCHING DATA... <span class="blink">_</span>';
+
+  const { lat, lon } = currentLocation;
+
+  const [swResult, wResult, aqResult] = await Promise.allSettled([
+    fetchSpaceWeather(),
+    fetchWeather(lat, lon),
+    fetchAirQuality(lat, lon),
+  ]);
+
+  panelSpace.textContent = swResult.status === 'fulfilled'
+    ? renderSpaceWeather(swResult.value)
+    : buildErrorBox('COSMIC RAY / SPACE WEATHER', swResult.reason?.message ?? 'Network error');
+
+  panelWeather.textContent = wResult.status === 'fulfilled'
+    ? renderWeather(wResult.value)
+    : buildErrorBox('WEATHER FORECAST', wResult.reason?.message ?? 'Network error');
+
+  panelAir.textContent = aqResult.status === 'fulfilled'
+    ? renderAirQuality(aqResult.value)
+    : buildErrorBox('AIR QUALITY', aqResult.reason?.message ?? 'Network error');
+
+  statusBar.textContent = 'SYS: LAST UPDATE ' + nowJst();
+  isRefreshing = false;
+}
+
+function scheduleRefresh() {
+  clearInterval(refreshTimer);
+  refreshAll();
+  refreshTimer = setInterval(refreshAll, 60_000);
+}
+
+// ── Location ──────────────────────────────────────────────────────────────
+function setLocation(loc) {
+  currentLocation = loc;
+  locLabel.textContent = 'LOC: ' + loc.name;
+  scheduleRefresh();
+}
+
+document.getElementById('btn-gps').addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    statusBar.textContent = 'SYS: GPS NOT SUPPORTED BY THIS BROWSER';
+    return;
+  }
+  statusBar.innerHTML = 'SYS: ACQUIRING GPS FIX... <span class="blink">_</span>';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      setLocation({
+        name: 'GPS (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ')',
+        lat,
+        lon,
+      });
+    },
+    err => {
+      statusBar.textContent = 'SYS: GPS ERROR \u2014 ' + err.message;
+    },
+    { timeout: 15000 }
+  );
+});
+
+document.getElementById('btn-city').addEventListener('click', () => {
+  modalOverlay.classList.add('open');
+});
+
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  modalOverlay.classList.remove('open');
+});
+
+modalOverlay.addEventListener('click', e => {
+  if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+});
+
+// Populate city list
+CITIES.forEach(city => {
+  const li = document.createElement('li');
+  li.textContent = city.name;
+  li.addEventListener('click', () => {
+    modalOverlay.classList.remove('open');
+    setLocation(city);
+  });
+  cityList.appendChild(li);
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+scheduleRefresh();
+</script>
+</body>
+</html>
