@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#CC000000"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_location"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:typeface="monospace"
+            android:textColor="#FF00FFFF"
+            android:textSize="11sp"
+            android:text="LOC: ---" />
+
+        <TextView
+            android:id="@+id/widget_refresh_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:typeface="monospace"
+            android:textColor="#FFFFFF00"
+            android:textSize="11sp"
+            android:paddingStart="8dp"
+            android:text="[&#x21BA;]" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
+        android:background="#FF007A1F" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_temperature"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:typeface="monospace"
+            android:textColor="#FF00FF41"
+            android:textSize="24sp"
+            android:text="--.-&#xB0;C" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_condition"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:typeface="monospace"
+                android:textColor="#FF00FF41"
+                android:textSize="10sp"
+                android:text="---" />
+
+            <TextView
+                android:id="@+id/widget_kp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:typeface="monospace"
+                android:textColor="#FF00FF41"
+                android:textSize="10sp"
+                android:text="KP: --" />
+
+            <TextView
+                android:id="@+id/widget_aqi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:typeface="monospace"
+                android:textColor="#FF00FF41"
+                android:textSize="10sp"
+                android:text="AQI: --" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:background="#FF007A1F" />
+
+    <TextView
+        android:id="@+id/widget_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:typeface="monospace"
+        android:textColor="#FF007A1F"
+        android:textSize="9sp"
+        android:text="SYS: ---" />
+
+</LinearLayout>
